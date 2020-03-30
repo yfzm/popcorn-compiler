@@ -220,11 +220,11 @@ __migrate_shim_internal(int nid, void (*callback)(void *), void *callback_data)
   int cur_nid = popcorn_getnid();
 #endif
 
-  if(!node_available(nid))
-  {
-    fprintf(stderr, "Destination node is not available!\n");
-    return;
-  }
+  // if(!node_available(nid))
+  // {
+  //   fprintf(stderr, "Destination node is not available!\n");
+  //   return;
+  // }
 
   data_ptr = pthread_get_migrate_args();
   if(!data_ptr) // Invoke migration
@@ -305,14 +305,15 @@ __migrate_shim_internal(int nid, void (*callback)(void *), void *callback_data)
       //
       // Note that when migration fails, we resume after the syscall and
       // err is set to 1.
-      MIGRATE(err);
-      if(err)
-      {
-        perror("Could not migrate to node");
-        pthread_set_migrate_args(NULL);
-        return;
-      }
-      data_ptr = pthread_get_migrate_args();
+      // MIGRATE(err);
+      if(data_ptr->callback) data_ptr->callback(data_ptr->callback_data);
+      // if(err)
+      // {
+      //   perror("Could not migrate to node");
+      //   pthread_set_migrate_args(NULL);
+      //   return;
+      // }
+      // data_ptr = pthread_get_migrate_args();
     }
     else
     {
@@ -329,7 +330,7 @@ __migrate_shim_internal(int nid, void (*callback)(void *), void *callback_data)
 #if _CLEAN_CRASH == 1
   if(cur_nid != origin_nid) remote_debug_init(cur_nid);
 #endif
-  if(data_ptr->callback) data_ptr->callback(data_ptr->callback_data);
+  // if(data_ptr->callback) data_ptr->callback(data_ptr->callback_data);
 
   pthread_set_migrate_args(NULL);
 }
@@ -345,7 +346,7 @@ void check_migrate(void (*callback)(void *), void *callback_data)
 /* Invoke migration to a particular node if we're not already there. */
 void migrate(int nid, void (*callback)(void *), void *callback_data)
 {
-  if (nid != popcorn_getnid())
+  // if (nid != popcorn_getnid())
     __migrate_shim_internal(nid, callback, callback_data);
 }
 
