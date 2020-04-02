@@ -225,12 +225,17 @@ __migrate_shim_internal(int nid, void (*callback)(void *), void *callback_data)
   //   fprintf(stderr, "Destination node is not available!\n");
   //   return;
   // }
+  void (*func)(void *) = callback;
+  void *args = callback_data;
 
   data_ptr = pthread_get_migrate_args();
+  printf("data_ptr: %p\n", data_ptr);
   if(!data_ptr) // Invoke migration
   {
     unsigned long sp = 0, bp = 0;
-    const enum arch dst_arch = ni[nid].arch;
+    // const enum arch dst_arch = ni[nid].arch;
+    // const enum arch dst_arch = ARCH_AARCH64;
+    const enum arch dst_arch = ARCH_X86_64;
     union {
        struct regset_aarch64 aarch;
        struct regset_powerpc64 powerpc;
@@ -253,7 +258,9 @@ __migrate_shim_internal(int nid, void (*callback)(void *), void *callback_data)
       data.callback = callback;
       data.callback_data = callback_data;
       data.regset = &regs_dst;
+      printf("set???\n");
       pthread_set_migrate_args(&data);
+      printf("Set successfully??\n");
 #if _SIG_MIGRATION == 1
       clear_migrate_flag();
 #endif
@@ -292,7 +299,7 @@ __migrate_shim_internal(int nid, void (*callback)(void *), void *callback_data)
 
       // Translate between architecture-specific thread descriptors
       // Note: TLS is now invalid until after migration!
-      __set_thread_area(get_thread_pointer(GET_TLS_POINTER, dst_arch));
+      // __set_thread_area(get_thread_pointer(GET_TLS_POINTER, dst_arch));
 
       // This code has different behavior depending on the type of migration:
       //
@@ -306,7 +313,12 @@ __migrate_shim_internal(int nid, void (*callback)(void *), void *callback_data)
       // Note that when migration fails, we resume after the syscall and
       // err is set to 1.
       // MIGRATE(err);
-      if(data_ptr->callback) data_ptr->callback(data_ptr->callback_data);
+      if (func) {
+        // puts("[yfzm] Invoke helper");
+        func(&regs_dst);
+      }
+      // fprintf(stderr, "yfzm migrate!!!!!!\n");
+      // if(data_ptr->callback) data_ptr->callback(data_ptr->callback_data);
       // if(err)
       // {
       //   perror("Could not migrate to node");
@@ -330,7 +342,12 @@ __migrate_shim_internal(int nid, void (*callback)(void *), void *callback_data)
 #if _CLEAN_CRASH == 1
   if(cur_nid != origin_nid) remote_debug_init(cur_nid);
 #endif
-  // if(data_ptr->callback) data_ptr->callback(data_ptr->callback_data);
+  // if(data_ptr->callback) {
+  //   printf("[yfzm] Invoke helper\n");
+  //   data_ptr->callback(data_ptr->callback_data);
+  // }
+
+
 
   pthread_set_migrate_args(NULL);
 }
@@ -338,9 +355,9 @@ __migrate_shim_internal(int nid, void (*callback)(void *), void *callback_data)
 /* Check if we should migrate, and invoke migration. */
 void check_migrate(void (*callback)(void *), void *callback_data)
 {
-  int nid = do_migrate(__builtin_return_address(0));
-  if (nid >= 0 && nid != popcorn_getnid())
-    __migrate_shim_internal(nid, callback, callback_data);
+  // int nid = do_migrate(__builtin_return_address(0));
+  // if (nid >= 0 && nid != popcorn_getnid())
+  //   __migrate_shim_internal(nid, callback, callback_data);
 }
 
 /* Invoke migration to a particular node if we're not already there. */

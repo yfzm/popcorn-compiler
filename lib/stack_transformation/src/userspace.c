@@ -222,6 +222,7 @@ int st_userspace_rewrite(void* sp,
                          void* dest_regs)
 {
   st_handle src_handle, dest_handle;
+printf("[yfzm] here0: src_arch: %d, dst_arch: %d!\n", src_arch, dest_arch);
 
   switch(src_arch)
   {
@@ -312,12 +313,15 @@ static bool prep_stack(void)
 
   ST_INFO("Prepped stack for main thread, addresses %p -> %p\n",
           bounds.low, bounds.high);
+  printf("Prepped stack for main thread, addresses %p -> %p\n",
+          bounds.low, bounds.high);
 
   /*
    * Get offset of main thread's stack pointer from stack base so we can avoid
    * clobbering argv & environment variables.
    */
   ASSERT(__popcorn_stack_base, "Stack base not correctly set by musl\n");
+  printf("popcorn_stack_base: %p\n", __popcorn_stack_base);
   offset = (uint64_t)(bounds.high - __popcorn_stack_base);
   offset += (offset % 0x10 ? 0x10 - (offset % 0x10) : 0);
   bounds.high -= offset;
@@ -366,6 +370,7 @@ static bool get_main_stack(stack_bounds* bounds)
   fclose(proc_fp);
 
   ST_INFO("procfs stack limits: %p -> %p\n", bounds->low, bounds->high);
+  printf("procfs stack limits: %p -> %p\n", bounds->low, bounds->high);
   return found;
 }
 
@@ -392,6 +397,9 @@ static bool get_thread_stack(stack_bounds* bounds)
     {
       ST_INFO("unexpected stack size: expected %lx, got %lx\n",
               MAX_STACK_SIZE, stack_size);
+      printf("unexpected stack size: expected %lx, got %lx\n",
+              MAX_STACK_SIZE, stack_size);
+              
       bounds->low = bounds->high - MAX_STACK_SIZE;
     }
     retval = true;
@@ -404,6 +412,7 @@ static bool get_thread_stack(stack_bounds* bounds)
     retval = false;
   }
   ST_INFO("Thread stack limits: %p -> %p\n", bounds->low, bounds->high);
+  printf("Thread stack limits: %p -> %p\n", bounds->low, bounds->high);
   return retval;
 }
 
@@ -423,12 +432,13 @@ static int userspace_rewrite_internal(void* sp,
   stack_bounds bounds;
   stack_bounds* bounds_ptr;
 #endif
-
+printf("Have been here!\n");
   if(!sp || !src_regs || !dest_regs || !src_handle || !dest_handle)
   {
     ST_WARN("invalid arguments\n");
     return 1;
   }
+printf("> low: %p, high: %p\n", bounds.low, bounds.high);
 
   /* If not already resolved, get stack limits for thread. */
 #if _TLS_IMPL == COMPILER_TLS
@@ -445,7 +455,7 @@ static int userspace_rewrite_internal(void* sp,
   }
   bounds = *bounds_ptr;
 #endif
-
+printf("low: %p, high: %p\n", bounds.low, bounds.high);
   if(sp < bounds.low || bounds.high <= sp)
   {
     ST_WARN("invalid stack pointer\n");
@@ -462,6 +472,7 @@ static int userspace_rewrite_internal(void* sp,
   cur_stack = (sp >= stack_b) ? stack_a : stack_b;
   new_stack = (sp >= stack_b) ? stack_b : stack_a;
   ST_INFO("On stack %p, rewriting to %p\n", cur_stack, new_stack);
+  printf("On stack %p, rewriting to %p\n", cur_stack, new_stack);
   if(st_rewrite_stack(src_handle, src_regs, cur_stack,
                       dest_handle, dest_regs, new_stack))
   {
