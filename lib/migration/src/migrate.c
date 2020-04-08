@@ -283,7 +283,8 @@ __migrate_shim_internal(int nid, void (*callback)(void *), void *callback_data)
 #endif
         break;
       case ARCH_X86_64:
-        regs_dst.x86.rip = __migrate_fixup_x86_64;
+        // regs_dst.x86.rip = __migrate_fixup_x86_64;
+        regs_dst.x86.rip = __migrate_shim_internal;
         sp = (unsigned long)regs_dst.x86.rsp;
         bp = (unsigned long)regs_dst.x86.rbp;
 #if _LOG == 1
