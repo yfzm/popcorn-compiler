@@ -10,7 +10,8 @@ extern "C" {
 #include <bits/errno.h>
 
 int *__errno_location(void);
-#define errno (*__errno_location())
+// #define errno (*__errno_location())  // modified by yfzm
+unsigned long errno;
 
 #ifdef _GNU_SOURCE
 extern char *program_invocation_short_name, *program_invocation_name;

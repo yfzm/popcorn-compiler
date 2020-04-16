@@ -29,8 +29,12 @@ int __timedwait_cp(volatile int *addr, int val,
 		top = &to;
 	}
 
-	r = -__syscall_cp(SYS_futex, addr, FUTEX_WAIT|priv, val, top);
-	if (r == ENOSYS) r = -__syscall_cp(SYS_futex, addr, FUTEX_WAIT, val, top);
+	// modified by yfzm
+	// r = -__syscall_cp(SYS_futex, addr, FUTEX_WAIT|priv, val, top);
+	// if (r == ENOSYS) r = -__syscall_cp(SYS_futex, addr, FUTEX_WAIT, val, top);
+	r = -ocall_syscall4(SYS_futex, addr, FUTEX_WAIT|priv, val, top);
+	if (r == ENOSYS) r = -ocall_syscall4(SYS_futex, addr, FUTEX_WAIT, val, top);
+
 	if (r != EINTR && r != ETIMEDOUT && r != ECANCELED) r = 0;
 
 	return r;

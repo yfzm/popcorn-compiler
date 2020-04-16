@@ -56,6 +56,8 @@ long __syscall_ret(unsigned long), __syscall(syscall_arg_t, ...),
 #define socketcall __socketcall
 #define socketcall_cp __socketcall_cp
 
+// modified by yfzm
+/*
 #define __syscall_cp0(n) (__syscall_cp)(n,0,0,0,0,0,0)
 #define __syscall_cp1(n,a) (__syscall_cp)(n,__scc(a),0,0,0,0,0)
 #define __syscall_cp2(n,a,b) (__syscall_cp)(n,__scc(a),__scc(b),0,0,0,0)
@@ -63,6 +65,14 @@ long __syscall_ret(unsigned long), __syscall(syscall_arg_t, ...),
 #define __syscall_cp4(n,a,b,c,d) (__syscall_cp)(n,__scc(a),__scc(b),__scc(c),__scc(d),0,0)
 #define __syscall_cp5(n,a,b,c,d,e) (__syscall_cp)(n,__scc(a),__scc(b),__scc(c),__scc(d),__scc(e),0)
 #define __syscall_cp6(n,a,b,c,d,e,f) (__syscall_cp)(n,__scc(a),__scc(b),__scc(c),__scc(d),__scc(e),__scc(f))
+*/
+#define __syscall_cp0(n) ocall_syscall0(n)
+#define __syscall_cp1(n,a) ocall_syscall1(n,__scc(a))
+#define __syscall_cp2(n,a,b) ocall_syscall2(n,__scc(a),__scc(b))
+#define __syscall_cp3(n,a,b,c) ocall_syscall3(n,__scc(a),__scc(b),__scc(c))
+#define __syscall_cp4(n,a,b,c,d) ocall_syscall4(n,__scc(a),__scc(b),__scc(c),__scc(d))
+#define __syscall_cp5(n,a,b,c,d,e) ocall_syscall5(n,__scc(a),__scc(b),__scc(c),__scc(d),__scc(e))
+#define __syscall_cp6(n,a,b,c,d,e,f) ocall_syscall6(n,__scc(a),__scc(b),__scc(c),__scc(d),__scc(e),__scc(f))
 
 #define __syscall_cp(...) __SYSCALL_DISP(__syscall_cp,__VA_ARGS__)
 #define syscall_cp(...) __syscall_ret(__syscall_cp(__VA_ARGS__))

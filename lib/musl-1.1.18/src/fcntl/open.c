@@ -14,9 +14,11 @@ int open(const char *filename, int flags, ...)
 		va_end(ap);
 	}
 
-	int fd = __sys_open_cp(filename, flags, mode);
+	// int fd = __sys_open_cp(filename, flags, mode);  // modified by yfzm
+	int fd = ocall_syscall4(SYS_openat, AT_FDCWD, filename, flags, mode);
 	if (fd>=0 && (flags & O_CLOEXEC))
-		__syscall(SYS_fcntl, fd, F_SETFD, FD_CLOEXEC);
+		// __syscall(SYS_fcntl, fd, F_SETFD, FD_CLOEXEC);  // modified by yfzm
+		ocall_syscall3(SYS_fcntl, fd, F_SETFD, FD_CLOEXEC);
 
 	return __syscall_ret(fd);
 }
