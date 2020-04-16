@@ -1,14 +1,53 @@
-/* Default linker script, for normal executables */
+total_pages = 0x40000;
+code_pages = 0x400;                  
+data_pages = 0x400;                  
+heap_pages = 0x3f000;                  
+stack_pages = 0x7d0; 
+TCS_SSA = 0x30;
+start_addr = 0x40000000;
+	
+/* Script for -z combreloc: combine and sort reloc sections */
 OUTPUT_FORMAT("elf64-littleaarch64", "elf64-bigaarch64",
 	      "elf64-littleaarch64")
 OUTPUT_ARCH(aarch64)
-ENTRY(_start)
+/* ENTRY(_start) */
+
+/* constants */                      
+page_size = 0x1000;              
+								 
+total_size = total_pages * page_size;
+data_start = start_addr + code_pages * page_size;
+
 SECTIONS
 {
   /* Read-only sections, merged into text segment: */
-  PROVIDE (__executable_start = SEGMENT_START("text-segment", 0x400000)); . = SEGMENT_START("text-segment", 0x400000) + SIZEOF_HEADERS;
+  /*
+	 PROVIDE (__executable_start = SEGMENT_START("text-segment", 0x400000)); . = SEGMENT_START("text-segment", 0x400000) + SIZEOF_HEADERS;
+	*/
+  . = start_addr;
+  PROVIDE(enclave_start = .);
+  PROVIDE(init_stack = . + 0x800000);
+  PROVIDE(enclave_end = enclave_start + total_size - 1);
+  PROVIDE(heap_start = enclave_start + (code_pages + data_pages) * page_size);
+  PROVIDE(heap_end = heap_start + heap_pages * page_size);
+
+ 
+  /*offset: 2 pages (TCS|SSA|TLS)*/
+  PROVIDE(tls_1 = heap_end + stack_pages * page_size + 0x2 * page_size); 
+  PROVIDE(tls_2 = tls_1 + 0x3 * page_size);
+  PROVIDE(tls_3 = tls_2 + 0x3 * page_size);
+  PROVIDE(tls_4 = tls_3 + 0x3 * page_size);
+
+  /* stack starts from high address.*/
+  PROVIDE(init_stack_1 = heap_end + 4 * (stack_pages / 4) * page_size); 
+  PROVIDE(init_stack_2 = heap_end + 3 * (stack_pages / 4) * page_size);
+  PROVIDE(init_stack_3 = heap_end + 2 * (stack_pages / 4) * page_size);
+  PROVIDE(init_stack_4 = heap_end + 1 * (stack_pages / 4) * page_size);
+
+__TEXT__		/* marker for the TEXT section insertion */  
+
   .interp         : { *(.interp) }
-/*  .note.gnu.build-id : { *(.note.gnu.build-id) }*/
+  .note.gnu.build-id : { *(.note.gnu.build-id) }
   .hash           : { *(.hash) }
   .gnu.hash       : { *(.gnu.hash) }
   .dynsym         : { *(.dynsym) }
@@ -16,19 +55,24 @@ SECTIONS
   .gnu.version    : { *(.gnu.version) }
   .gnu.version_d  : { *(.gnu.version_d) }
   .gnu.version_r  : { *(.gnu.version_r) }
-  .rela.init      : { *(.rela.init) }
-  .rela.text      : { *(.rela.text .rela.text.* .rela.gnu.linkonce.t.*) }
-  .rela.fini      : { *(.rela.fini) }
-  .rela.rodata    : { *(.rela.rodata .rela.rodata.* .rela.gnu.linkonce.r.*) }
-  .rela.data.rel.ro   : { *(.rela.data.rel.ro .rela.data.rel.ro.* .rela.gnu.linkonce.d.rel.ro.*) }
-  .rela.data      : { *(.rela.data .rela.data.* .rela.gnu.linkonce.d.*) }
-  .rela.tdata	  : { *(.rela.tdata .rela.tdata.* .rela.gnu.linkonce.td.*) }
-  .rela.tbss	  : { *(.rela.tbss .rela.tbss.* .rela.gnu.linkonce.tb.*) }
-  .rela.ctors     : { *(.rela.ctors) }
-  .rela.dtors     : { *(.rela.dtors) }
-  .rela.got       : { *(.rela.got) }
-  .rela.bss       : { *(.rela.bss .rela.bss.* .rela.gnu.linkonce.b.*) }
-  .rela.ifunc     : { *(.rela.ifunc) }
+  .rela.dyn       :
+    {
+      *(.rela.init)
+      *(.rela.text .rela.text.* .rela.gnu.linkonce.t.*)
+      *(.rela.fini)
+      *(.rela.rodata .rela.rodata.* .rela.gnu.linkonce.r.*)
+      *(.rela.data .rela.data.* .rela.gnu.linkonce.d.*)
+      *(.rela.tdata .rela.tdata.* .rela.gnu.linkonce.td.*)
+      *(.rela.tbss .rela.tbss.* .rela.gnu.linkonce.tb.*)
+      *(.rela.ctors)
+      *(.rela.dtors)
+      *(.rela.got)
+      *(.rela.bss .rela.bss.* .rela.gnu.linkonce.b.*)
+      *(.rela.ldata .rela.ldata.* .rela.gnu.linkonce.l.*)
+      *(.rela.lbss .rela.lbss.* .rela.gnu.linkonce.lb.*)
+      *(.rela.lrodata .rela.lrodata.* .rela.gnu.linkonce.lr.*)
+      *(.rela.ifunc)
+    }
   .rela.plt       :
     {
       *(.rela.plt)
@@ -40,42 +84,22 @@ SECTIONS
   {
     /*KEEP (*(SORT_NONE(.init)))*/
   }
-  .plt            : ALIGN(16) { *(.plt) *(.iplt) }
-  
-__TEXT__		/* marker for the TEXT section insertion */  
-  
-  .fini           :
+  .plt            : { *(.plt) *(.iplt) }
+    .fini           :
   {
-/*    KEEP (*(SORT_NONE(.fini)))*/
-  } =0
+    /*KEEP (*(SORT_NONE(.fini)))*/
+  }
   PROVIDE (__etext = .);
   PROVIDE (_etext = .);
   PROVIDE (etext = .);
-  
+
+  . = data_start;
+
 __RODATA__		/* marker for the RODATA section insertion */	
-  
+
   .rodata1        : { *(.rodata1) }
-  .eh_frame       : ONLY_IF_RO { KEEP (*(.eh_frame)) }
-  
-__DATA__ 		/* marker for the DATA section insertion */ 
-  
-  .data1          : { *(.data1) }
-  _edata = .; PROVIDE (edata = .);
-/*   . = ALIGN(0x100);   . = .;*/
- 
- __bss_start = .;
-  __bss_start__ = .;
-  
-__BSS__		/* marker for the BSS section insertion */
-  
-  _bss_end__ = . ; __bss_end__ = . ;
-  . = ALIGN(32 / 8);
-  . = ALIGN(32 / 8);
-  __end__ = . ;
-  _end = .; PROVIDE (end = .);
-  . = DATA_SEGMENT_END (.);
   .eh_frame_hdr : { *(.eh_frame_hdr) }
-  
+  .eh_frame       : ONLY_IF_RO { KEEP (*(.eh_frame)) }
   .gcc_except_table   : ONLY_IF_RO { *(.gcc_except_table
   .gcc_except_table.*) }
   /* These sections are generated by the Sun/Oracle C++ compiler.  */
@@ -83,16 +107,17 @@ __BSS__		/* marker for the BSS section insertion */
   .exception_ranges*) }
   /* Adjust the address for the data segment.  We want to adjust up to
      the same address within the page on the next page up.  */
+  /*
   . = ALIGN (CONSTANT (MAXPAGESIZE)) - ((CONSTANT (MAXPAGESIZE) - .) & (CONSTANT (MAXPAGESIZE) - 1)); . = DATA_SEGMENT_ALIGN (CONSTANT (MAXPAGESIZE), CONSTANT (COMMONPAGESIZE));
+  */
   /* Exception handling  */
   .eh_frame       : ONLY_IF_RW { KEEP (*(.eh_frame)) }
   .gcc_except_table   : ONLY_IF_RW { *(.gcc_except_table .gcc_except_table.*) }
   .exception_ranges   : ONLY_IF_RW { *(.exception_ranges .exception_ranges*) }
   /* Thread Local Storage sections  */
-  
 __TDATA__		/* marker for the TDATA section insertion */  
-  
-__TBSS__		/* maker for the TBSS section insertion */
+
+__TBSS__		/* marker for the TBSS section insertion */
 
   .preinit_array     :
   {
@@ -103,15 +128,15 @@ __TBSS__		/* maker for the TBSS section insertion */
   .init_array     :
   {
     PROVIDE_HIDDEN (__init_array_start = .);
-    KEEP (*(SORT(.init_array.*)))
-    KEEP (*(.init_array))
+    KEEP (*(SORT_BY_INIT_PRIORITY(.init_array.*) SORT_BY_INIT_PRIORITY(.ctors.*)))
+    KEEP (*(.init_array EXCLUDE_FILE (*crtbegin.o *crtbegin?.o *crtend.o *crtend?.o ) .ctors))
     PROVIDE_HIDDEN (__init_array_end = .);
   }
   .fini_array     :
   {
     PROVIDE_HIDDEN (__fini_array_start = .);
-    KEEP (*(SORT(.fini_array.*)))
-    KEEP (*(.fini_array))
+    KEEP (*(SORT_BY_INIT_PRIORITY(.fini_array.*) SORT_BY_INIT_PRIORITY(.dtors.*)))
+    KEEP (*(.fini_array EXCLUDE_FILE (*crtbegin.o *crtbegin?.o *crtend.o *crtend?.o ) .dtors))
     PROVIDE_HIDDEN (__fini_array_end = .);
   }
   .ctors          :
@@ -144,60 +169,41 @@ __TBSS__		/* maker for the TBSS section insertion */
     KEEP (*(.dtors))
   }
   .jcr            : { KEEP (*(.jcr)) }
-  .data.rel.ro : 
-   {
-	*(.data.rel.ro.local* .gnu.linkonce.d.rel.ro.local.*)
-	*(.data.rel.ro .data.rel.ro.* .gnu.linkonce.d.rel.ro.*) 
-   }
+  .data.rel.ro : { *(.data.rel.ro.local* .gnu.linkonce.d.rel.ro.local.*) *(.data.rel.ro .data.rel.ro.* .gnu.linkonce.d.rel.ro.*) }
   .dynamic        : { *(.dynamic) }
   .got            : { *(.got) *(.igot) }
-  . = DATA_SEGMENT_RELRO_END (24, .);
+  /*. = DATA_SEGMENT_RELRO_END (SIZEOF (.got.plt) >= 24 ? 24 : 0, .);*/
   .got.plt        : { *(.got.plt)  *(.igot.plt) }
-  .llvm_stackmaps : ALIGN(0x1000) { *(.llvm_stackmaps) }
-/*  . = ALIGN(32 / 8);
-  . = ALIGN(32 / 8);
-  __end__ = . ;
-  _end = .; PROVIDE (end = .);*/
+
+__DATA__ 		/* marker for the DATA section insertion */ 
+
+  .data1          : { *(.data1) }
+  _edata = .; PROVIDE (edata = .);
+  . = .;
+  __bss_start = .;
+
+__BSS__		/* marker for the BSS section insertion */
+
+  .lbss   :
+  {
+    *(.dynlbss)
+    *(.lbss .lbss.* .gnu.linkonce.lb.*)
+    *(LARGE_COMMON)
+  }
+  . = ALIGN(64 / 8);
+  . = SEGMENT_START("ldata-segment", .);
+  .lrodata   ALIGN(CONSTANT (MAXPAGESIZE)) + (. & (CONSTANT (MAXPAGESIZE) - 1)) :
+  {
+    *(.lrodata .lrodata.* .gnu.linkonce.lr.*)
+  }
+  .ldata   ALIGN(CONSTANT (MAXPAGESIZE)) + (. & (CONSTANT (MAXPAGESIZE) - 1)) :
+  {
+    *(.ldata .ldata.* .gnu.linkonce.l.*)
+    . = ALIGN(. != 0 ? 64 / 8 : 1);
+  }
+  /*
+  . = ALIGN(64 / 8);
+  _end = .; PROVIDE (end = .);
   . = DATA_SEGMENT_END (.);
-  /* Stabs debugging sections.  */
-  .stab          0 : { *(.stab) }
-  .stabstr       0 : { *(.stabstr) }
-  .stab.excl     0 : { *(.stab.excl) }
-  .stab.exclstr  0 : { *(.stab.exclstr) }
-  .stab.index    0 : { *(.stab.index) }
-  .stab.indexstr 0 : { *(.stab.indexstr) }
-  .comment       0 : { *(.comment) }
-  /* DWARF debug sections.
-     Symbols in the DWARF debugging sections are relative to the beginning
-     of the section so we begin them at 0.  */
-  /* DWARF 1 */
-  .debug          0 : { *(.debug) }
-  .line           0 : { *(.line) }
-  /* GNU DWARF 1 extensions */
-  .debug_srcinfo  0 : { *(.debug_srcinfo) }
-  .debug_sfnames  0 : { *(.debug_sfnames) }
-  /* DWARF 1.1 and DWARF 2 */
-  .debug_aranges  0 : { *(.debug_aranges) }
-  .debug_pubnames 0 : { *(.debug_pubnames) }
-  /* DWARF 2 */
-  .debug_info     0 : { *(.debug_info .gnu.linkonce.wi.*) }
-  .debug_abbrev   0 : { *(.debug_abbrev) }
-  .debug_line     0 : { *(.debug_line) }
-  .debug_frame    0 : { *(.debug_frame) }
-  .debug_str      0 : { *(.debug_str) }
-  .debug_loc      0 : { *(.debug_loc) }
-  .debug_macinfo  0 : { *(.debug_macinfo) }
-  /* SGI/MIPS DWARF 2 extensions */
-  .debug_weaknames 0 : { *(.debug_weaknames) }
-  .debug_funcnames 0 : { *(.debug_funcnames) }
-  .debug_typenames 0 : { *(.debug_typenames) }
-  .debug_varnames  0 : { *(.debug_varnames) }
-  /* DWARF 3 */
-  .debug_pubtypes 0 : { *(.debug_pubtypes) }
-  .debug_ranges   0 : { *(.debug_ranges) }
-  /* DWARF Extension.  */
-  .debug_macro    0 : { *(.debug_macro) }
-  .ARM.attributes 0 : { KEEP (*(.ARM.attributes)) KEEP (*(.gnu.attributes)) }
-  .note.gnu.arm.ident 0 : { KEEP (*(.note.gnu.arm.ident)) }
-  /DISCARD/ : { *(.note.GNU-stack) *(.gnu_debuglink) *(.gnu.lto_*) *(.note.gnu.build-id) }
+  */
 }
