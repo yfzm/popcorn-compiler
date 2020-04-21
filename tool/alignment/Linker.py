@@ -52,8 +52,9 @@ class Linker:
 					# I can still align what is below the **common, but if
 					# **common size is larger than 0x1000 this number will
 					# have to be increased...
-					output_buffer.append("\t. = . + 1;\n")
-					output_buffer.append("\t. = ALIGN(0x1000);\n")
+					if section != ".text":  # Modified by yfzm, skip text section
+						output_buffer.append("\t. = . + 1;\n")
+						output_buffer.append("\t. = ALIGN(0x1000);\n")
 
 					# iterate over symbols to add:
 					for symbol in symbolsList[section]:

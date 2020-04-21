@@ -201,6 +201,7 @@ __BSS__		/* marker for the BSS section insertion */
     *(.ldata .ldata.* .gnu.linkonce.l.*)
     . = ALIGN(. != 0 ? 64 / 8 : 1);
   }
+  .llvm_stackmaps : ALIGN(0x1000) { *(.llvm_stackmaps)     }
   /*
   . = ALIGN(64 / 8);
   _end = .; PROVIDE (end = .);
