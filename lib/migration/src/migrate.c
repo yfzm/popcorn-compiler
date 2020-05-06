@@ -234,8 +234,8 @@ __migrate_shim_internal(int nid, void (*callback)(void *), void *callback_data)
   {
     unsigned long sp = 0, bp = 0;
     // const enum arch dst_arch = ni[nid].arch;
-    // const enum arch dst_arch = ARCH_AARCH64;
-    const enum arch dst_arch = ARCH_X86_64;
+    const enum arch dst_arch = ARCH_AARCH64;
+    // const enum arch dst_arch = ARCH_X86_64;
     union {
        struct regset_aarch64 aarch;
        struct regset_powerpc64 powerpc;
@@ -267,7 +267,7 @@ __migrate_shim_internal(int nid, void (*callback)(void *), void *callback_data)
 
       switch(dst_arch) {
       case ARCH_AARCH64:
-        regs_dst.aarch.pc = __migrate_fixup_aarch64;
+        // regs_dst.aarch.pc = __migrate_fixup_aarch64;
         sp = (unsigned long)regs_dst.aarch.sp;
         bp = (unsigned long)regs_dst.aarch.x[29];
 #if _LOG == 1
@@ -318,6 +318,7 @@ __migrate_shim_internal(int nid, void (*callback)(void *), void *callback_data)
         // puts("[yfzm] Invoke helper");
         func(&regs_dst);
       }
+      memcpy((void *)0x7f7d0000, &regs_dst, sizeof(regs_dst));
       // fprintf(stderr, "yfzm migrate!!!!!!\n");
       // if(data_ptr->callback) data_ptr->callback(data_ptr->callback_data);
       // if(err)

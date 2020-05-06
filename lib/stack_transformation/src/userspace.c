@@ -27,8 +27,11 @@ static st_handle x86_64_handle = NULL;
 #if _TLS_IMPL == COMPILER_TLS
 static __thread stack_bounds bounds = { .high = NULL, .low = NULL };
 #else /* PTHREAD_TLS */
-static pthread_key_t stack_bounds_key = 0;
+// static pthread_key_t stack_bounds_key = 0;
 #endif
+
+#define STACK_HIGH 0x7ffd0000
+#define STACK_LOW  0x7f7d0000
 
 /*
  * Set inside of musl at __libc_start_main() to point to where environment
@@ -112,36 +115,45 @@ void __st_userspace_ctor(void)
    * 2. Check if application has overridden file name symbols (defined above)
    * 3. Add architecture suffixes to current binary name (defined by libc)
    */
-  if(getenv(ENV_AARCH64_BIN)) aarch64_handle = st_init(getenv(ENV_AARCH64_BIN));
-  else if(aarch64_fn) aarch64_handle = st_init(aarch64_fn);
-  else {
-    aarch64_fn = (char*)MALLOC(sizeof(char) * BUF_SIZE);
-    snprintf(aarch64_fn, BUF_SIZE, "%s_aarch64", __progname);
+  printf("before init handle\n");
+  printf("env: %s\n", getenv(ENV_AARCH64_BIN));
+  printf("outside_fn: %s\n", aarch64_fn);
+  if (!aarch64_handle) {
+    if(getenv(ENV_AARCH64_BIN)) aarch64_handle = st_init(getenv(ENV_AARCH64_BIN));
+    else if(aarch64_fn) aarch64_handle = st_init(aarch64_fn);
+    else {
+      aarch64_fn = (char*)MALLOC(sizeof(char) * BUF_SIZE);
+      snprintf(aarch64_fn, BUF_SIZE, "%s_aarch64", __progname);
+    }
+    aarch64_handle = st_init(aarch64_fn);
+    if(aarch64_handle) alloc_aarch64_fn = true;
+    else { ST_WARN("could not initialize aarch64 handle\n"); }
   }
-  aarch64_handle = st_init(aarch64_fn);
-  if(aarch64_handle) alloc_aarch64_fn = true;
-  else { ST_WARN("could not initialize aarch64 handle\n"); }
 
-  if(getenv(ENV_POWERPC64_BIN))
-    powerpc64_handle = st_init(getenv(ENV_POWERPC64_BIN));
-  else if(powerpc64_fn) powerpc64_handle = st_init(powerpc64_fn);
-  else {
-    powerpc64_fn = (char*)MALLOC(sizeof(char) * BUF_SIZE);
-    snprintf(powerpc64_fn, BUF_SIZE, "%s_powerpc64", __progname);
+  if (!powerpc64_handle) {
+    if(getenv(ENV_POWERPC64_BIN))
+      powerpc64_handle = st_init(getenv(ENV_POWERPC64_BIN));
+    else if(powerpc64_fn) powerpc64_handle = st_init(powerpc64_fn);
+    else {
+      powerpc64_fn = (char*)MALLOC(sizeof(char) * BUF_SIZE);
+      snprintf(powerpc64_fn, BUF_SIZE, "%s_powerpc64", __progname);
+    }
+    powerpc64_handle = st_init(powerpc64_fn);
+    if(powerpc64_handle) alloc_powerpc64_fn = true;
+    else { ST_WARN("could not initialize powerpc64 handle\n"); }
   }
-  powerpc64_handle = st_init(powerpc64_fn);
-  if(powerpc64_handle) alloc_powerpc64_fn = true;
-  else { ST_WARN("could not initialize powerpc64 handle\n"); }
 
-  if(getenv(ENV_X86_64_BIN)) x86_64_handle = st_init(getenv(ENV_X86_64_BIN));
-  else if(x86_64_fn) x86_64_handle = st_init(x86_64_fn);
-  else {
-    x86_64_fn = (char*)MALLOC(sizeof(char) * BUF_SIZE);
-    snprintf(x86_64_fn, BUF_SIZE, "%s_x86-64", __progname);
+  if (!x86_64_handle) {
+    if(getenv(ENV_X86_64_BIN)) x86_64_handle = st_init(getenv(ENV_X86_64_BIN));
+    else if(x86_64_fn) x86_64_handle = st_init(x86_64_fn);
+    else {
+      x86_64_fn = (char*)MALLOC(sizeof(char) * BUF_SIZE);
+      snprintf(x86_64_fn, BUF_SIZE, "%s_x86-64", __progname);
+    }
+    x86_64_handle = st_init(x86_64_fn);
+    if(x86_64_handle) alloc_x86_64_fn = true;
+    else { ST_WARN("could not initialize x86-64 handle\n"); }
   }
-  x86_64_handle = st_init(x86_64_fn);
-  if(x86_64_handle) alloc_x86_64_fn = true;
-  else { ST_WARN("could not initialize x86-64 handle\n"); }
 }
 
 /*
@@ -174,28 +186,28 @@ void __st_userspace_dtor(void)
 stack_bounds get_stack_bounds()
 {
   void* cur_stack;
-  stack_bounds cur_bounds = {NULL, NULL};
+//   stack_bounds cur_bounds = {NULL, NULL};
 
-  /* If not already resolved, get stack limits for thread. */
-#if _TLS_IMPL == COMPILER_TLS
-  if(bounds.high == NULL)
-    if(!get_thread_stack(&bounds)) return cur_bounds;
-  cur_bounds = bounds;
-#else /* PTHREAD_TLS */
-  stack_bounds* bounds_ptr;
-  if(!(bounds_ptr = pthread_getspecific(stack_bounds_key)))
-  {
-    bounds_ptr = (stack_bounds*)MALLOC(sizeof(stack_bounds));
-    ASSERT(bounds_ptr, "could not allocate memory for stack bounds\n");
-    int retval = pthread_setspecific(stack_bounds_key, bounds_ptr);
-    if(retval) {
-      ASSERT(!retval, "could not set TLS data for thread\n");
-      return cur_bounds;
-    }
-    if(!get_thread_stack(bounds_ptr)) return cur_bounds;
-  }
-  cur_bounds = *bounds_ptr;
-#endif
+//   /* If not already resolved, get stack limits for thread. */
+// #if _TLS_IMPL == COMPILER_TLS
+//   if(bounds.high == NULL)
+//     if(!get_thread_stack(&bounds)) return cur_bounds;
+//   cur_bounds = bounds;
+// #else /* PTHREAD_TLS */
+//   stack_bounds* bounds_ptr;
+//   if(!(bounds_ptr = pthread_getspecific(stack_bounds_key)))
+//   {
+//     bounds_ptr = (stack_bounds*)MALLOC(sizeof(stack_bounds));
+//     ASSERT(bounds_ptr, "could not allocate memory for stack bounds\n");
+//     int retval = pthread_setspecific(stack_bounds_key, bounds_ptr);
+//     if(retval) {
+//       ASSERT(!retval, "could not set TLS data for thread\n");
+//       return cur_bounds;
+//     }
+//     if(!get_thread_stack(bounds_ptr)) return cur_bounds;
+//   }
+//   cur_bounds = *bounds_ptr;
+// #endif
 
   /* Determine which half of stack we're currently using. */
 #ifdef __aarch64__
@@ -205,6 +217,9 @@ stack_bounds get_stack_bounds()
 #elif defined __x86_64__
   asm volatile("movq %%rsp, %0" : "=g"(cur_stack) ::);
 #endif
+
+  stack_bounds cur_bounds = { .high = STACK_HIGH, .low = STACK_LOW };
+
   if(cur_stack >= cur_bounds.low + B_STACK_OFFSET)
     cur_bounds.low += B_STACK_OFFSET;
   else cur_bounds.high = cur_bounds.low + B_STACK_OFFSET;
@@ -223,6 +238,10 @@ int st_userspace_rewrite(void* sp,
 {
   st_handle src_handle, dest_handle;
 printf("[yfzm] here0: src_arch: %d, dst_arch: %d!\n", src_arch, dest_arch);
+  
+  if (!aarch64_handle || !x86_64_handle) {
+    __st_userspace_ctor();
+  }
 
   switch(src_arch)
   {
@@ -267,6 +286,7 @@ printf("[yfzm] here0: src_arch: %d, dst_arch: %d!\n", src_arch, dest_arch);
  */
 static bool prep_stack(void)
 {
+#if 0
   long ret;
   size_t offset;
   struct rlimit rlim;
@@ -328,12 +348,14 @@ static bool prep_stack(void)
 #if _TLS_IMPL == PTHREAD_TLS
   *bounds_ptr = bounds;
 #endif
+#endif
   return true;
 }
 
 /* Read stack information for the main thread from the procfs. */
 static bool get_main_stack(stack_bounds* bounds)
 {
+  assert(0);
   /* /proc/<id>/maps fields */
   bool found = false;
   int fields;
@@ -428,33 +450,34 @@ static int userspace_rewrite_internal(void* sp,
 {
   int retval = 0;
   void* stack_a, *stack_b, *cur_stack, *new_stack;
-#if _TLS_IMPL == PTHREAD_TLS
-  stack_bounds bounds;
-  stack_bounds* bounds_ptr;
-#endif
+// #if _TLS_IMPL == PTHREAD_TLS
+//   stack_bounds bounds;
+//   stack_bounds* bounds_ptr;
+// #endif
+stack_bounds bounds = { .high = STACK_HIGH, .low = STACK_LOW };
 printf("Have been here!\n");
   if(!sp || !src_regs || !dest_regs || !src_handle || !dest_handle)
   {
     ST_WARN("invalid arguments\n");
     return 1;
   }
-printf("> low: %p, high: %p\n", bounds.low, bounds.high);
+// printf("> low: %p, high: %p\n", bounds.low, bounds.high);
 
-  /* If not already resolved, get stack limits for thread. */
-#if _TLS_IMPL == COMPILER_TLS
-  if(bounds.high == NULL)
-    if(!get_thread_stack(&bounds)) return 1;
-#else /* PTHREAD_TLS */
-  if(!(bounds_ptr = pthread_getspecific(stack_bounds_key)))
-  {
-    bounds_ptr = (stack_bounds*)MALLOC(sizeof(stack_bounds));
-    ASSERT(bounds_ptr, "could not allocate memory for stack bounds\n");
-    retval = pthread_setspecific(stack_bounds_key, bounds_ptr);
-    ASSERT(!retval, "could not set TLS data for thread\n");
-    if(!get_thread_stack(bounds_ptr)) return 1;
-  }
-  bounds = *bounds_ptr;
-#endif
+//   /* If not already resolved, get stack limits for thread. */
+// #if _TLS_IMPL == COMPILER_TLS
+//   if(bounds.high == NULL)
+//     if(!get_thread_stack(&bounds)) return 1;
+// #else /* PTHREAD_TLS */
+//   if(!(bounds_ptr = pthread_getspecific(stack_bounds_key)))
+//   {
+//     bounds_ptr = (stack_bounds*)MALLOC(sizeof(stack_bounds));
+//     ASSERT(bounds_ptr, "could not allocate memory for stack bounds\n");
+//     retval = pthread_setspecific(stack_bounds_key, bounds_ptr);
+//     ASSERT(!retval, "could not set TLS data for thread\n");
+//     if(!get_thread_stack(bounds_ptr)) return 1;
+//   }
+//   bounds = *bounds_ptr;
+// #endif
 printf("low: %p, high: %p\n", bounds.low, bounds.high);
   if(sp < bounds.low || bounds.high <= sp)
   {

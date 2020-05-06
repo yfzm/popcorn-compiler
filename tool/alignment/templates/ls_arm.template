@@ -1,8 +1,8 @@
 total_pages = 0x40000;
 code_pages = 0x400;                  
 data_pages = 0x400;                  
-heap_pages = 0x3f000;                  
-stack_pages = 0x7d0; 
+heap_pages = 0x377d0;                  
+stack_pages = 0x8000; 
 TCS_SSA = 0x30;
 start_addr = 0x40000000;
 	

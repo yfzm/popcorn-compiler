@@ -380,9 +380,16 @@ static void unwind_and_size(rewrite_context src,
      * Call site meta-data will be used to get return addresses, canonical
      * frame addresses and frame-base pointer locations.
      */
-    if(!get_site_by_addr(src->handle, REGOPS(src)->pc(ACT(src).regs), &ACT(src).site))
-      ST_ERR(1, "could not get source call site information (address=%p)\n",
+    if(!get_site_by_addr(src->handle, REGOPS(src)->pc(ACT(src).regs), &ACT(src).site)) {
+      printf("hacked by yfzm, source call site address=%p, now stop unwind.\n",
              REGOPS(src)->pc(ACT(src).regs));
+      dest->num_acts--;
+      dest->act--;
+      src->num_acts--;
+      break;
+    }
+      // ST_ERR(1, "could not get source call site information (address=%p)\n",
+      //        REGOPS(src)->pc(ACT(src).regs));
 
     if(!get_site_by_id(dest->handle, ACT(src).site.id, &ACT(dest).site))
       ST_ERR(1, "could not get destination call site information (address=%p, ID=%ld)\n",
@@ -394,6 +401,7 @@ static void unwind_and_size(rewrite_context src,
     /* Set the CFA for the current frame, which becomes the next frame's SP */
     // Note: we need both the SP & call site information to set up CFA
     ACT(src).cfa = calculate_cfa(src, src->act);
+    printf("next cfa: %p\n", ACT(src).cfa);
   }
   while(!first_frame(ACT(src).site.id));
 

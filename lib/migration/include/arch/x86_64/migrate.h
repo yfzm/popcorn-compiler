@@ -20,6 +20,14 @@
     self + MUSL_PTHREAD_DESCRIPTOR_SIZE; \
   })
 
+/* Added by yfzm, used for enclave only */
+#define GET_RAW_TLS_POINTER \
+  ({ \
+    void *self; \
+    asm volatile ("movq %%fs:0x0, %0" : "=r"(self)); \
+    self; \
+  })
+
 #if _NATIVE == 1 /* Safe for native execution/debugging */
 
 #define REWRITE_STACK(regs_src, regs_dst, dst_arch) \
