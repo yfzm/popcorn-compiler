@@ -314,11 +314,14 @@ __migrate_shim_internal(int nid, void (*callback)(void *), void *callback_data)
       // Note that when migration fails, we resume after the syscall and
       // err is set to 1.
       // MIGRATE(err);
-      if (func) {
-        // puts("[yfzm] Invoke helper");
-        func(&regs_dst);
-      }
+      // if (func) {
+      //   // puts("[yfzm] Invoke helper");
+      //   func(&regs_dst);
+      // }
       memcpy((void *)0x7f7d0000, &regs_dst, sizeof(regs_dst));
+      memcpy((void *)0x60c00000, (void *)0x40c00000, 0x4000000);
+      memmove((void *)0x40900000, (void *)0x40600000, 0x300000-0x4096);
+      printf("[yfzm] 0x60c0022c: %p\n", *(void **)(0x60c0022c));
       // fprintf(stderr, "yfzm migrate!!!!!!\n");
       // if(data_ptr->callback) data_ptr->callback(data_ptr->callback_data);
       // if(err)
