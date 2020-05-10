@@ -12,6 +12,10 @@
 #include "mapping.h"
 #include "debug.h"
 
+void dump_out(char *);  // defined in enclave/migration.c
+void ocall_senddata();  // defined in enclave/ocall_syscall_wrapper.c
+int migration_flag = 0;  // set in enclave/trampo.c, cleared in _internal_migrate_shim
+
 #if _SIG_MIGRATION == 1
 #include "trigger.h"
 #endif
@@ -216,6 +220,7 @@ __migrate_shim_internal(int nid, void (*callback)(void *), void *callback_data)
   int err;
   struct shim_data data;
   struct shim_data *data_ptr;
+
 #if _CLEAN_CRASH == 1
   int cur_nid = popcorn_getnid();
 #endif
@@ -228,10 +233,12 @@ __migrate_shim_internal(int nid, void (*callback)(void *), void *callback_data)
   void (*func)(void *) = callback;
   void *args = callback_data;
 
-  data_ptr = pthread_get_migrate_args();
-  printf("data_ptr: %p\n", data_ptr);
-  if(!data_ptr) // Invoke migration
+  // data_ptr = pthread_get_migrate_args();
+  // printf("data_ptr: %p\n", data_ptr);
+  // if(!data_ptr) // Invoke migration
+  if (migration_flag == 1)
   {
+    migration_flag = 0;
     unsigned long sp = 0, bp = 0;
     // const enum arch dst_arch = ni[nid].arch;
     const enum arch dst_arch = ARCH_AARCH64;
@@ -319,9 +326,14 @@ __migrate_shim_internal(int nid, void (*callback)(void *), void *callback_data)
       //   func(&regs_dst);
       // }
       memcpy((void *)0x7f7d0000, &regs_dst, sizeof(regs_dst));
-      memcpy((void *)0x60c00000, (void *)0x40c00000, 0x4000000);
-      memmove((void *)0x40900000, (void *)0x40600000, 0x300000-0x4096);
-      printf("[yfzm] 0x60c0022c: %p\n", *(void **)(0x60c0022c));
+      // memcpy((void *)0x60c00000, (void *)0x40c00000, 0x4000000);
+      // memmove((void *)0x40900000, (void *)0x40600000, 0x300000-0x4096);
+      // printf("[yfzm] 0x60c0022c: %p\n", *(void **)(0x60c0022c));
+      // printf("[yfzm] 0x7ffd2028: %p\n", *(void **)(0x7ffd2028));
+      dump_out((char *)(0x600000000000));
+      // printf("[yfzm] 0x60003ffd2028: %p\n", *(void **)(0x7ffd2028));
+
+      ocall_senddata();
       // fprintf(stderr, "yfzm migrate!!!!!!\n");
       // if(data_ptr->callback) data_ptr->callback(data_ptr->callback_data);
       // if(err)
@@ -363,6 +375,8 @@ void check_migrate(void (*callback)(void *), void *callback_data)
   // int nid = do_migrate(__builtin_return_address(0));
   // if (nid >= 0 && nid != popcorn_getnid())
   //   __migrate_shim_internal(nid, callback, callback_data);
+  if (migration_flag == 1)
+    __migrate_shim_internal(1, 0, 0);
 }
 
 /* Invoke migration to a particular node if we're not already there. */
@@ -378,7 +392,7 @@ void migrate_schedule(size_t region,
                       void (*callback)(void *),
                       void *callback_data)
 {
-  int nid = get_node_mapping(region, popcorn_tid);
-  if (nid != popcorn_getnid())
-    __migrate_shim_internal(nid, callback, callback_data);
+  // int nid = get_node_mapping(region, popcorn_tid);
+  // if (nid != popcorn_getnid())
+  //   __migrate_shim_internal(nid, callback, callback_data);
 }
