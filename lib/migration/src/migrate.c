@@ -215,7 +215,7 @@ get_call_site() { return __builtin_return_address(0); };
 // Note: a pointer to data necessary to bootstrap execution after migration is
 // saved by the pthread library.
 void
-__migrate_shim_internal(int nid, void (*callback)(void *), void *callback_data)
+__migrate_shim_internal(int target, void (*callback)(void *), void *callback_data)
 {
   int err;
   struct shim_data data;
@@ -230,8 +230,8 @@ __migrate_shim_internal(int nid, void (*callback)(void *), void *callback_data)
   //   fprintf(stderr, "Destination node is not available!\n");
   //   return;
   // }
-  void (*func)(void *) = callback;
-  void *args = callback_data;
+  // void (*func)(void *) = callback;
+  // void *args = callback_data;
 
   // data_ptr = pthread_get_migrate_args();
   // printf("data_ptr: %p\n", data_ptr);
@@ -241,8 +241,9 @@ __migrate_shim_internal(int nid, void (*callback)(void *), void *callback_data)
     migration_flag = 0;
     unsigned long sp = 0, bp = 0;
     // const enum arch dst_arch = ni[nid].arch;
-    const enum arch dst_arch = ARCH_AARCH64;
+    // const enum arch dst_arch = ARCH_AARCH64;
     // const enum arch dst_arch = ARCH_X86_64;
+    const enum arch dst_arch = target;
     union {
        struct regset_aarch64 aarch;
        struct regset_powerpc64 powerpc;
@@ -265,9 +266,7 @@ __migrate_shim_internal(int nid, void (*callback)(void *), void *callback_data)
       data.callback = callback;
       data.callback_data = callback_data;
       data.regset = &regs_dst;
-      printf("set???\n");
-      pthread_set_migrate_args(&data);
-      printf("Set successfully??\n");
+      // pthread_set_migrate_args(&data);
 #if _SIG_MIGRATION == 1
       clear_migrate_flag();
 #endif
@@ -364,9 +363,7 @@ __migrate_shim_internal(int nid, void (*callback)(void *), void *callback_data)
   //   data_ptr->callback(data_ptr->callback_data);
   // }
 
-
-
-  pthread_set_migrate_args(NULL);
+  // pthread_set_migrate_args(NULL);
 }
 
 /* Check if we should migrate, and invoke migration. */
@@ -376,7 +373,7 @@ void check_migrate(void (*callback)(void *), void *callback_data)
   // if (nid >= 0 && nid != popcorn_getnid())
   //   __migrate_shim_internal(nid, callback, callback_data);
   if (migration_flag == 1)
-    __migrate_shim_internal(1, 0, 0);
+    __migrate_shim_internal(ARCH_AARCH64, 0, 0);
 }
 
 /* Invoke migration to a particular node if we're not already there. */
