@@ -247,7 +247,7 @@ void* points_to_data(const rewrite_context src,
                          src_val->regnum,
                          src_val->offset_or_constant,
                          src->act);
-  if(src_addr <= src_ptr && src_ptr < (src_addr + src_val->alloca_size))
+  if(src_addr <= src_ptr && src_ptr <= (src_addr + src_val->alloca_size))
   {
     ST_INFO("Reifying address of source value %p to: ", src_addr);
     dest_addr = get_val_loc(dest, dest_val->type,
