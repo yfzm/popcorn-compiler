@@ -125,9 +125,9 @@ void __st_userspace_ctor(void)
       aarch64_fn = (char*)MALLOC(sizeof(char) * BUF_SIZE);
       snprintf(aarch64_fn, BUF_SIZE, "%s_aarch64", __progname);
       aarch64_handle = st_init(aarch64_fn);
+      if(aarch64_handle) alloc_aarch64_fn = true;
+      else { ST_WARN("could not initialize aarch64 handle\n"); }
     }
-    if(aarch64_handle) alloc_aarch64_fn = true;
-    else { ST_WARN("could not initialize aarch64 handle\n"); }
   }
 
   if (!powerpc64_handle) {
@@ -138,9 +138,9 @@ void __st_userspace_ctor(void)
       powerpc64_fn = (char*)MALLOC(sizeof(char) * BUF_SIZE);
       snprintf(powerpc64_fn, BUF_SIZE, "%s_powerpc64", __progname);
       powerpc64_handle = st_init(powerpc64_fn);
+      if(powerpc64_handle) alloc_powerpc64_fn = true;
+      else { ST_WARN("could not initialize powerpc64 handle\n"); }
     }
-    if(powerpc64_handle) alloc_powerpc64_fn = true;
-    else { ST_WARN("could not initialize powerpc64 handle\n"); }
   }
 
   if (!x86_64_handle) {
@@ -150,9 +150,9 @@ void __st_userspace_ctor(void)
       x86_64_fn = (char*)MALLOC(sizeof(char) * BUF_SIZE);
       snprintf(x86_64_fn, BUF_SIZE, "%s_x86-64", __progname);
       x86_64_handle = st_init(x86_64_fn);
+      if(x86_64_handle) alloc_x86_64_fn = true;
+      else { ST_WARN("could not initialize x86-64 handle\n"); }
     }
-    if(x86_64_handle) alloc_x86_64_fn = true;
-    else { ST_WARN("could not initialize x86-64 handle\n"); }
   }
 }
 
@@ -237,6 +237,7 @@ int st_userspace_rewrite(void* sp,
                          void* dest_regs)
 {
   st_handle src_handle, dest_handle;
+  int ret;
 printf("[yfzm] here0: src_arch: %d, dst_arch: %d!\n", src_arch, dest_arch);
   
   if (!aarch64_handle || !x86_64_handle) {
@@ -271,8 +272,12 @@ printf("[yfzm] here0: src_arch: %d, dst_arch: %d!\n", src_arch, dest_arch);
     return 1;
   }
 
-  return userspace_rewrite_internal(sp, src_regs, dest_regs,
+  ret = userspace_rewrite_internal(sp, src_regs, dest_regs,
                                     src_handle, dest_handle);
+
+  __st_userspace_dtor();
+  printf("after destructor\n");
+  return ret;
 }
 
 ///////////////////////////////////////////////////////////////////////////////
