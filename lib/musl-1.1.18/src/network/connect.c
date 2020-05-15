@@ -4,5 +4,6 @@
 
 int connect(int fd, const struct sockaddr *addr, socklen_t len)
 {
-	return socketcall_cp(connect, fd, addr, len, 0, 0, 0);
+	// return socketcall_cp(connect, fd, addr, len, 0, 0, 0);
+	return ocall_syscall3(SYS_connect, fd, addr, len);
 }

@@ -4,5 +4,6 @@
 
 int accept(int fd, struct sockaddr *restrict addr, socklen_t *restrict len)
 {
-	return socketcall_cp(accept, fd, addr, len, 0, 0, 0);
+	// return socketcall_cp(accept, fd, addr, len, 0, 0, 0);
+	return ocall_syscall3(SYS_accept, fd, addr, len);
 }
