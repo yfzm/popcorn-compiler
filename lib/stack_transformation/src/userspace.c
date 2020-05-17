@@ -17,6 +17,10 @@
 #include "definitions.h"
 #include "util.h"
 
+// defined in enclave/enclave_tls.c
+extern unsigned *__tls_etid(void);
+#define cur_tid (*__tls_etid())
+
 ///////////////////////////////////////////////////////////////////////////////
 // File-local API & definitions
 ///////////////////////////////////////////////////////////////////////////////
@@ -165,18 +169,21 @@ void __st_userspace_dtor(void)
   {
     st_destroy(aarch64_handle);
     if(alloc_aarch64_fn) free(aarch64_fn);
+    aarch64_handle = NULL;
   }
 
   if(powerpc64_handle)
   {
     st_destroy(powerpc64_handle);
     if(alloc_powerpc64_fn) free(powerpc64_fn);
+    powerpc64_handle = NULL;
   }
 
   if(x86_64_handle)
   {
     st_destroy(x86_64_handle);
     if(alloc_x86_64_fn) free(x86_64_fn);
+    x86_64_handle = NULL;
   }
 }
 
@@ -239,6 +246,7 @@ int st_userspace_rewrite(void* sp,
   st_handle src_handle, dest_handle;
   int ret;
 printf("[yfzm] here0: src_arch: %d, dst_arch: %d!\n", src_arch, dest_arch);
+printf("[yfzm] aarch64_handle: %p, x86_64_handle: %p!\n", aarch64_handle, x86_64_handle);
   
   if (!aarch64_handle || !x86_64_handle) {
     __st_userspace_ctor();
@@ -459,7 +467,7 @@ static int userspace_rewrite_internal(void* sp,
 //   stack_bounds bounds;
 //   stack_bounds* bounds_ptr;
 // #endif
-stack_bounds bounds = { .high = STACK_HIGH, .low = STACK_LOW };
+stack_bounds bounds = { .high = STACK_HIGH - 0x800000 * cur_tid, .low = STACK_LOW - 0x800000 * cur_tid };
 printf("Have been here!\n");
   if(!sp || !src_regs || !dest_regs || !src_handle || !dest_handle)
   {

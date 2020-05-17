@@ -12,9 +12,17 @@
 #include "mapping.h"
 #include "debug.h"
 
+// defined in enclave/enclave_tls.c
+extern unsigned *__tls_etid(void);
+#define cur_tid (*__tls_etid())
+
 void dump_out(char *);  // defined in enclave/migration.c
 void ocall_senddata();  // defined in enclave/ocall_syscall_wrapper.c
 int migration_flag = 0;  // set in enclave/trampo.c, cleared in _internal_migrate_shim
+int migration_ready[16] = {0};
+
+int check_ready();
+int check_transformed();
 
 #if _SIG_MIGRATION == 1
 #include "trigger.h"
@@ -238,7 +246,6 @@ __migrate_shim_internal(int target, void (*callback)(void *), void *callback_dat
   // if(!data_ptr) // Invoke migration
   if (migration_flag == 1)
   {
-    migration_flag = 0;
     unsigned long sp = 0, bp = 0;
     // const enum arch dst_arch = ni[nid].arch;
     // const enum arch dst_arch = ARCH_AARCH64;
@@ -324,11 +331,32 @@ __migrate_shim_internal(int target, void (*callback)(void *), void *callback_dat
       //   // puts("[yfzm] Invoke helper");
       //   func(&regs_dst);
       // }
-      memcpy((void *)0x7f7d0000, &regs_dst, sizeof(regs_dst));
+      memcpy((void *)0x7f7d0000 - 0x800000 * cur_tid, &regs_dst, sizeof(regs_dst));
       // memcpy((void *)0x60c00000, (void *)0x40c00000, 0x4000000);
       // memmove((void *)0x40900000, (void *)0x40600000, 0x300000-0x4096);
       // printf("[yfzm] 0x60c0022c: %p\n", *(void **)(0x60c0022c));
       // printf("[yfzm] 0x7ffd2028: %p\n", *(void **)(0x7ffd2028));
+
+      // All threads should meet here
+      printf("[%d] After stack transformation\n", cur_tid);
+      migration_ready[cur_tid] = 4;
+      while (cur_tid != 0) sleep(1);
+
+      printf("[%d] Only main thread reach here.\n", cur_tid);
+      while (!check_transformed())
+        sleep(1);
+
+      printf("[%d] Reset migration_ready bit to 1(normal) from 4(done)\n", cur_tid);
+      for (int i = 0; i < 15; i++) {
+        if (migration_ready[i] == 4)
+          migration_ready[i] = 1;
+      }
+
+      printf("[%d] Reset migration_flag to 0\n", cur_tid);
+      migration_flag = 0;
+
+      printf("Before dump out!\n");
+
       dump_out((char *)(0x600000000000));
       // printf("[yfzm] 0x60003ffd2028: %p\n", *(void **)(0x7ffd2028));
 
@@ -366,14 +394,46 @@ __migrate_shim_internal(int target, void (*callback)(void *), void *callback_dat
   // pthread_set_migrate_args(NULL);
 }
 
+/* Check if all threads are ready for migration. Return 1 if ready */
+int check_ready() {
+  int all_ready = 1;
+  for (int i = 0; i < 15; i++) {  // exclude migration_helper thread??
+    if (migration_ready[i] == 3 || migration_ready[i] == 4)  // some thread has passed the check
+      return 1;
+    if (migration_ready[i] != 0 && migration_ready[i] != 2)
+      all_ready = 0;
+  }
+  return all_ready;
+}
+
+/* Check if all threads are ready for migration. Return 1 if ready */
+int check_transformed() {
+  printf("check transformed\n");
+  for (int i = 0; i < 15; i++) {  // exclude migration_helper thread??
+    if (migration_ready[i] != 0 && migration_ready[i] != 4)
+      return 0;
+  }
+  return 1;
+}
+
 /* Check if we should migrate, and invoke migration. */
 void check_migrate(void (*callback)(void *), void *callback_data)
 {
   // int nid = do_migrate(__builtin_return_address(0));
   // if (nid >= 0 && nid != popcorn_getnid())
   //   __migrate_shim_internal(nid, callback, callback_data);
-  if (migration_flag == 1)
+  // printf("current_tid: %d\n", cur_tid);
+  if (migration_flag == 1) {
+    printf("thread %d enter check_migrate\n", cur_tid);
+    migration_ready[cur_tid] = 2;
+    while (check_ready() == 0) {
+      sleep(1);
+    }
+    // if (cur_tid != 0) sleep(5);
+    migration_ready[cur_tid] = 3;
+    printf("[%d] MIGRATE: all ready!\n", cur_tid);
     __migrate_shim_internal(ARCH_AARCH64, 0, 0);
+  }
 }
 
 /* Invoke migration to a particular node if we're not already there. */
