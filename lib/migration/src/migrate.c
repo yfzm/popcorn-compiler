@@ -423,6 +423,7 @@ void check_migrate(void (*callback)(void *), void *callback_data)
   // if (nid >= 0 && nid != popcorn_getnid())
   //   __migrate_shim_internal(nid, callback, callback_data);
   // printf("current_tid: %d\n", cur_tid);
+  if (callback == NULL) return;
   if (migration_flag == 1) {
     printf("thread %d enter check_migrate\n", cur_tid);
     migration_ready[cur_tid] = 2;
@@ -440,7 +441,9 @@ void check_migrate(void (*callback)(void *), void *callback_data)
 void migrate(int nid, void (*callback)(void *), void *callback_data)
 {
   // if (nid != popcorn_getnid())
-    __migrate_shim_internal(nid, callback, callback_data);
+  migration_flag = 1;
+  check_migrate(0, 0);
+    //__migrate_shim_internal(nid, callback, callback_data);
 }
 
 /* Invoke migration to a particular node according to a thread schedule. */
