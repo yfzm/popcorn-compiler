@@ -24,6 +24,14 @@ int migration_ready[16] = {0};
 int check_ready();
 int check_transformed();
 
+#include <sys/time.h>
+static unsigned long get_time() {
+	struct timeval tv;
+	gettimeofday(&tv, NULL);
+	return tv.tv_sec * 1000 * 1000 + tv.tv_usec;
+}
+unsigned long timer_start, timer_end;
+
 #if _SIG_MIGRATION == 1
 #include "trigger.h"
 #endif
@@ -264,8 +272,11 @@ __migrate_shim_internal(int target, void (*callback)(void *), void *callback_dat
 #if _TIME_REWRITE == 1
     TIMESTAMP(start);
 #endif
+	timer_start = get_time();
     if(REWRITE_STACK(regs_src, regs_dst, dst_arch))
     {
+		timer_end = get_time();
+		printf("[TIME] stack transform finished: %ld us\n", (timer_end - timer_start));
 #if _TIME_REWRITE == 1
       TIMESTAMP(end);
       printf("Stack transformation time: %lluns\n", TIMESTAMP_DIFF(start, end));
@@ -357,7 +368,11 @@ __migrate_shim_internal(int target, void (*callback)(void *), void *callback_dat
 
       //printf("Before dump out!\n");
 
+      timer_start = get_time();
       dump_out((char *)(0x600000000000));
+      timer_end = get_time();
+      printf("[TIME] dump out finished: %ld us\n", (timer_end - timer_start));
+	  
       // printf("[yfzm] 0x60003ffd2028: %p\n", *(void **)(0x7ffd2028));
 
       ocall_senddata();

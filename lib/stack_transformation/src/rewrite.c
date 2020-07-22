@@ -121,7 +121,7 @@ int st_rewrite_stack(st_handle handle_src,
   }
 
   unsigned long rewrite_start, rewrite_end;
-  rewrite_start = get_time();
+  //rewrite_start = get_time();
   TIMER_START(st_rewrite_stack);
 
   ST_INFO("--> Initializing rewrite (%s -> %s) <--\n",
@@ -184,8 +184,8 @@ int st_rewrite_stack(st_handle handle_src,
   free_context(src);
 
   ST_INFO("Finished rewrite!\n");
-  rewrite_end = get_time();
-  printf("[TIME] stack transformation finished: %ld us\n", (rewrite_end - rewrite_start));
+  //rewrite_end = get_time();
+  //printf("[TIME] stack transformation finished: %ld us\n", (rewrite_end - rewrite_start));
 
   TIMER_STOP(st_rewrite_stack);
   TIMER_PRINT;
