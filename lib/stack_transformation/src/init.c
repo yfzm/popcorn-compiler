@@ -77,7 +77,7 @@ st_handle st_init(const char* fn)
 
   /* Initialize libelf data */
   if((handle->fd = open(fn, O_RDONLY, 0)) < 0) {
-    printf("fn: %s open error %d\n", fn, handle->fd);
+    //printf("fn: %s open error %d\n", fn, handle->fd);
     goto free_handle;
   }
   if(!(handle->elf = elf_begin(handle->fd, ELF_C_READ, NULL))) goto close_file;

@@ -112,7 +112,7 @@ static inline void setup_frame_bounds(rewrite_context ctx, int act)
  */
 bool first_frame(uint64_t id)
 {
-  printf("first_frame(%lu)\n", id);
+  //printf("first_frame(%lu)\n", id);
   if(id == UINT64_MAX || /* "__libc_start_main()" in __libc_start_main.c */
      id == UINT64_MAX - 1 || /* "start()" in pthread_create.c */
      id == UINT64_MAX - 2) /* "start_c11()" in pthread_create.c */
@@ -170,7 +170,6 @@ void pop_frame(rewrite_context ctx, bool setup_bounds)
 
   TIMER_FG_START(pop_frame);
   ST_INFO("Popping frame (CFA = %p)\n", ACT(ctx).cfa);
-  printf("Popping frame (CFA = %p)\n", ACT(ctx).cfa);
 
   setup_regset(ctx, next_frame);
   setup_callee_saved_bits(ctx, next_frame);

@@ -119,9 +119,6 @@ void __st_userspace_ctor(void)
    * 2. Check if application has overridden file name symbols (defined above)
    * 3. Add architecture suffixes to current binary name (defined by libc)
    */
-  printf("before init handle\n");
-  printf("env: %s\n", getenv(ENV_AARCH64_BIN));
-  printf("outside_fn: %s\n", aarch64_fn);
   if (!aarch64_handle) {
     if(getenv(ENV_AARCH64_BIN)) aarch64_handle = st_init(getenv(ENV_AARCH64_BIN));
     else if(aarch64_fn) aarch64_handle = st_init(aarch64_fn);
@@ -245,8 +242,8 @@ int st_userspace_rewrite(void* sp,
 {
   st_handle src_handle, dest_handle;
   int ret;
-printf("[yfzm] here0: src_arch: %d, dst_arch: %d!\n", src_arch, dest_arch);
-printf("[yfzm] aarch64_handle: %p, x86_64_handle: %p!\n", aarch64_handle, x86_64_handle);
+//printf("[yfzm] here0: src_arch: %d, dst_arch: %d!\n", src_arch, dest_arch);
+//printf("[yfzm] aarch64_handle: %p, x86_64_handle: %p!\n", aarch64_handle, x86_64_handle);
   
   if (!aarch64_handle || !x86_64_handle) {
     __st_userspace_ctor();
@@ -284,7 +281,7 @@ printf("[yfzm] aarch64_handle: %p, x86_64_handle: %p!\n", aarch64_handle, x86_64
                                     src_handle, dest_handle);
 
   __st_userspace_dtor();
-  printf("after destructor\n");
+//  printf("after destructor\n");
   return ret;
 }
 
@@ -405,7 +402,6 @@ static bool get_main_stack(stack_bounds* bounds)
   fclose(proc_fp);
 
   ST_INFO("procfs stack limits: %p -> %p\n", bounds->low, bounds->high);
-  printf("procfs stack limits: %p -> %p\n", bounds->low, bounds->high);
   return found;
 }
 
@@ -432,8 +428,6 @@ static bool get_thread_stack(stack_bounds* bounds)
     {
       ST_INFO("unexpected stack size: expected %lx, got %lx\n",
               MAX_STACK_SIZE, stack_size);
-      printf("unexpected stack size: expected %lx, got %lx\n",
-              MAX_STACK_SIZE, stack_size);
               
       bounds->low = bounds->high - MAX_STACK_SIZE;
     }
@@ -447,7 +441,6 @@ static bool get_thread_stack(stack_bounds* bounds)
     retval = false;
   }
   ST_INFO("Thread stack limits: %p -> %p\n", bounds->low, bounds->high);
-  printf("Thread stack limits: %p -> %p\n", bounds->low, bounds->high);
   return retval;
 }
 
@@ -467,8 +460,7 @@ static int userspace_rewrite_internal(void* sp,
 //   stack_bounds bounds;
 //   stack_bounds* bounds_ptr;
 // #endif
-stack_bounds bounds = { .high = STACK_HIGH - 0x800000 * cur_tid, .low = STACK_LOW - 0x800000 * cur_tid };
-printf("Have been here!\n");
+  stack_bounds bounds = { .high = STACK_HIGH - 0x800000 * cur_tid, .low = STACK_LOW - 0x800000 * cur_tid };
   if(!sp || !src_regs || !dest_regs || !src_handle || !dest_handle)
   {
     ST_WARN("invalid arguments\n");
@@ -491,7 +483,7 @@ printf("Have been here!\n");
 //   }
 //   bounds = *bounds_ptr;
 // #endif
-printf("low: %p, high: %p\n", bounds.low, bounds.high);
+//printf("low: %p, high: %p\n", bounds.low, bounds.high);
   if(sp < bounds.low || bounds.high <= sp)
   {
     ST_WARN("invalid stack pointer\n");
@@ -508,7 +500,6 @@ printf("low: %p, high: %p\n", bounds.low, bounds.high);
   cur_stack = (sp >= stack_b) ? stack_a : stack_b;
   new_stack = (sp >= stack_b) ? stack_b : stack_a;
   ST_INFO("On stack %p, rewriting to %p\n", cur_stack, new_stack);
-  printf("On stack %p, rewriting to %p\n", cur_stack, new_stack);
   if(st_rewrite_stack(src_handle, src_regs, cur_stack,
                       dest_handle, dest_regs, new_stack))
   {

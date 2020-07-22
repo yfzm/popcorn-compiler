@@ -338,24 +338,24 @@ __migrate_shim_internal(int target, void (*callback)(void *), void *callback_dat
       // printf("[yfzm] 0x7ffd2028: %p\n", *(void **)(0x7ffd2028));
 
       // All threads should meet here
-      printf("[%d] After stack transformation\n", cur_tid);
+      //printf("[%d] After stack transformation\n", cur_tid);
       migration_ready[cur_tid] = 4;
       while (cur_tid != 0) sleep(1);
 
-      printf("[%d] Only main thread reach here.\n", cur_tid);
+      //printf("[%d] Only main thread reach here.\n", cur_tid);
       while (!check_transformed())
         sleep(1);
 
-      printf("[%d] Reset migration_ready bit to 1(normal) from 4(done)\n", cur_tid);
+      //printf("[%d] Reset migration_ready bit to 1(normal) from 4(done)\n", cur_tid);
       for (int i = 0; i < 15; i++) {
         if (migration_ready[i] == 4)
           migration_ready[i] = 1;
       }
 
-      printf("[%d] Reset migration_flag to 0\n", cur_tid);
+      //printf("[%d] Reset migration_flag to 0\n", cur_tid);
       migration_flag = 0;
 
-      printf("Before dump out!\n");
+      //printf("Before dump out!\n");
 
       dump_out((char *)(0x600000000000));
       // printf("[yfzm] 0x60003ffd2028: %p\n", *(void **)(0x7ffd2028));
@@ -408,7 +408,6 @@ int check_ready() {
 
 /* Check if all threads are ready for migration. Return 1 if ready */
 int check_transformed() {
-  printf("check transformed\n");
   for (int i = 0; i < 15; i++) {  // exclude migration_helper thread??
     if (migration_ready[i] != 0 && migration_ready[i] != 4)
       return 0;
@@ -425,14 +424,14 @@ void check_migrate(void (*callback)(void *), void *callback_data)
   // printf("current_tid: %d\n", cur_tid);
   if (callback == NULL) return;
   if (migration_flag == 1) {
-    printf("thread %d enter check_migrate\n", cur_tid);
+    //printf("thread %d enter check_migrate\n", cur_tid);
     migration_ready[cur_tid] = 2;
     while (check_ready() == 0) {
       sleep(1);
     }
     // if (cur_tid != 0) sleep(5);
     migration_ready[cur_tid] = 3;
-    printf("[%d] MIGRATE: all ready!\n", cur_tid);
+    //printf("[%d] MIGRATE: all ready!\n", cur_tid);
     __migrate_shim_internal(ARCH_AARCH64, 0, 0);
   }
 }

@@ -10,6 +10,13 @@
 #include "unwind.h"
 #include "util.h"
 
+#include <sys/time.h>
+static unsigned long get_time() {
+	struct timeval tv;
+	gettimeofday(&tv, NULL);
+	return tv.tv_sec * 1000 * 1000 + tv.tv_usec;
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 // File-local API & definitions
 ///////////////////////////////////////////////////////////////////////////////
@@ -113,6 +120,8 @@ int st_rewrite_stack(st_handle handle_src,
     return 1;
   }
 
+  unsigned long rewrite_start, rewrite_end;
+  rewrite_start = get_time();
   TIMER_START(st_rewrite_stack);
 
   ST_INFO("--> Initializing rewrite (%s -> %s) <--\n",
@@ -130,7 +139,6 @@ int st_rewrite_stack(st_handle handle_src,
   }
 
   ST_INFO("--> Unwinding source stack to find live activations <--\n");
-  printf("--> Unwinding source stack to find live activations <--\n");
 
   /* Unwind source stack to determine destination stack size. */
   unwind_and_size(src, dest);
@@ -140,13 +148,11 @@ int st_rewrite_stack(st_handle handle_src,
   // current & surrounding frames is accessed.  Modify with care!
 
   ST_INFO("--> Rewriting from source to destination stack <--\n");
-  printf("--> Rewriting from source to destination stack <--\n");
 
   TIMER_START(rewrite_stack);
 
   /* Rewrite outer-most frame. */
   ST_INFO("--> Rewriting outermost frame <--\n");
-  printf("--> Rewriting outermost frame <--\n");
 
   set_return_address_funcentry(dest, (void*)NEXT_ACT(dest).site.addr);
   pop_frame_funcentry(dest);
@@ -155,7 +161,6 @@ int st_rewrite_stack(st_handle handle_src,
   for(src->act = 1; src->act < src->num_acts - 1; src->act++)
   {
     ST_INFO("--> Rewriting frame %d <--\n", src->act);
-    printf("--> Rewriting frame %d <--\n", src->act);
 
     set_return_address(dest, (void*)NEXT_ACT(dest).site.addr);
     rewrite_frame(src, dest);
@@ -164,13 +169,11 @@ int st_rewrite_stack(st_handle handle_src,
     pop_frame(dest, true);
     *saved_fbp = (uint64_t)REGOPS(dest)->fbp(ACT(dest).regs);
     ST_INFO("Old FP saved to %p\n", saved_fbp);
-    printf("Old FP saved to %p\n", saved_fbp);
   }
 
   // Note: there may be a few things to fix up in the innermost function, e.g.,
   // the TOC pointer on PowerPC
   ST_INFO("--> Rewriting frame %d (starting function) <--\n", src->act);
-  printf("--> Rewriting frame %d (starting function) <--\n", src->act);
   rewrite_frame(src, dest);
 
   TIMER_STOP(rewrite_stack);
@@ -181,7 +184,8 @@ int st_rewrite_stack(st_handle handle_src,
   free_context(src);
 
   ST_INFO("Finished rewrite!\n");
-  printf("Finished rewrite!\n");
+  rewrite_end = get_time();
+  printf("[TIME] stack transformation finished: %ld us\n", (rewrite_end - rewrite_start));
 
   TIMER_STOP(st_rewrite_stack);
   TIMER_PRINT;
@@ -381,8 +385,8 @@ static void unwind_and_size(rewrite_context src,
      * frame addresses and frame-base pointer locations.
      */
     if(!get_site_by_addr(src->handle, REGOPS(src)->pc(ACT(src).regs), &ACT(src).site)) {
-      printf("hacked by yfzm, source call site address=%p, now stop unwind.\n",
-             REGOPS(src)->pc(ACT(src).regs));
+      //printf("hacked by yfzm, source call site address=%p, now stop unwind.\n",
+      //       REGOPS(src)->pc(ACT(src).regs));
       dest->num_acts--;
       dest->act--;
       src->num_acts--;
@@ -401,7 +405,7 @@ static void unwind_and_size(rewrite_context src,
     /* Set the CFA for the current frame, which becomes the next frame's SP */
     // Note: we need both the SP & call site information to set up CFA
     ACT(src).cfa = calculate_cfa(src, src->act);
-    printf("next cfa: %p\n", ACT(src).cfa);
+    //printf("next cfa: %p\n", ACT(src).cfa);
   }
   while(!first_frame(ACT(src).site.id));
 
