@@ -16,7 +16,8 @@
 extern unsigned *__tls_etid(void);
 #define cur_tid (*__tls_etid())
 
-void dump_out(char *);  // defined in enclave/migration.c
+void dump_out_init();   // defined in enclave/migration.c
+int dump_out(char *out, unsigned long size);  // defined in enclave/migration.c
 void ocall_senddata();  // defined in enclave/ocall_syscall_wrapper.c
 int migration_flag = 0;  // set in enclave/trampo.c, cleared in _internal_migrate_shim
 int migration_ready[16] = {0};
@@ -366,12 +367,16 @@ __migrate_shim_internal(int target, void (*callback)(void *), void *callback_dat
       //printf("[%d] Reset migration_flag to 0\n", cur_tid);
       migration_flag = 0;
 
-      //printf("Before dump out!\n");
+      printf("Before dump out!\n");
+	  dump_out_init();
+      printf("After dump out init!\n");
 
-      timer_start = get_time();
-      dump_out((char *)(0x600000000000));
-      timer_end = get_time();
-      printf("[TIME] dump out finished: %ld us\n", (timer_end - timer_start));
+	  while (dump_out((char *)0x600000000000, 0x1000000) == 0) {}
+
+//      timer_start = get_time();
+//      dump_out((char *)(0x600000000000));
+//      timer_end = get_time();
+//      printf("[TIME] dump out finished: %ld us\n", (timer_end - timer_start));
 	  
       // printf("[yfzm] 0x60003ffd2028: %p\n", *(void **)(0x7ffd2028));
 
