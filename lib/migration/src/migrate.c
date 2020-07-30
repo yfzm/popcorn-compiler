@@ -12,7 +12,11 @@
 #include "mapping.h"
 #include "debug.h"
 
-#define SEND_DATA_BLOCK_SIZE 0x1000000
+#define SEND_DATA_BLOCK_SIZE 0x100000
+//#define ENCRYPTION_MOCK_TIME 6372
+static int emt[] = { 54 /* 32KB */, 112, 228, 450, 905, 
+					 364 /* 1MB */, 751, 1592, 3143, 6247,
+					 12561 /* 32MB */, 28841, 60463 };
 
 // defined in enclave/enclave_tls.c
 extern unsigned *__tls_etid(void);
@@ -374,12 +378,27 @@ __migrate_shim_internal(int target, void (*callback)(void *), void *callback_dat
       //printf("After dump out init!\n");
 	  ocall_senddata(0);  // 0 for init
       //printf("After send data init!\n");
-
+	  //
+	  int mock_index = 0;
+	  unsigned long mock_tmp = SEND_DATA_BLOCK_SIZE;
+	  unsigned long mock_time = 0;
+	  while (mock_tmp > 1) {
+		  mock_tmp >>= 1;
+		  mock_index++;
+	  }
+	  mock_index -= 15;
+	  mock_time = emt[mock_index];
+	  printf("mock encryption time: %luus\n", mock_time);
+#if 1
       timer_start = get_time();
 	  while (dump_out((char *)0x600000000000, SEND_DATA_BLOCK_SIZE) == 0) {
-		  usleep(6372);  // mock encryption time (6372us for 16MB)
+		  usleep(mock_time);  // mock encryption time (6372us for 16MB)
 		  ocall_senddata(SEND_DATA_BLOCK_SIZE);
 	  }
+#else
+	  while (dump_out((char *)0x600000000000, SEND_DATA_BLOCK_SIZE) == 0) {}
+      timer_start = get_time();
+#endif
 	  while (ocall_senddata(SEND_DATA_BLOCK_SIZE) == 0) {}
       timer_end = get_time();
       printf("[TIME] dump out & send data finished: %ld us\n", (timer_end - timer_start));
