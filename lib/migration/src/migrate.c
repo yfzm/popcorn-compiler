@@ -350,6 +350,7 @@ __migrate_shim_internal(int target, void (*callback)(void *), void *callback_dat
       //   func(&regs_dst);
       // }
       memcpy((void *)0x7f7d0000 - 0x800000 * cur_tid, &regs_dst, sizeof(regs_dst));
+	  //printf("[debug] x30 0x%lx\n", regs_dst.aarch.x[30]);
       // memcpy((void *)0x60c00000, (void *)0x40c00000, 0x4000000);
       // memmove((void *)0x40900000, (void *)0x40600000, 0x300000-0x4096);
       // printf("[yfzm] 0x60c0022c: %p\n", *(void **)(0x60c0022c));
@@ -378,7 +379,8 @@ __migrate_shim_internal(int target, void (*callback)(void *), void *callback_dat
       //printf("After dump out init!\n");
 	  ocall_senddata(0);  // 0 for init
       //printf("After send data init!\n");
-	  //
+
+#if 1
 	  int mock_index = 0;
 	  unsigned long mock_tmp = SEND_DATA_BLOCK_SIZE;
 	  unsigned long mock_time = 0;
@@ -388,20 +390,29 @@ __migrate_shim_internal(int target, void (*callback)(void *), void *callback_dat
 	  }
 	  mock_index -= 15;
 	  mock_time = emt[mock_index];
-	  printf("mock encryption time: %luus\n", mock_time);
-#if 1
+	  if (SEND_DATA_BLOCK_SIZE >= 0x100000)
+		  printf("mock encryption time: %luus/%dMB\n", mock_time, SEND_DATA_BLOCK_SIZE / 0x100000);
+	  else
+		  printf("mock encryption time: %luus/%dKB\n", mock_time, SEND_DATA_BLOCK_SIZE / 0x400);
+
       timer_start = get_time();
 	  while (dump_out((char *)0x600000000000, SEND_DATA_BLOCK_SIZE) == 0) {
 		  usleep(mock_time);  // mock encryption time (6372us for 16MB)
 		  ocall_senddata(SEND_DATA_BLOCK_SIZE);
 	  }
-#else
-	  while (dump_out((char *)0x600000000000, SEND_DATA_BLOCK_SIZE) == 0) {}
-      timer_start = get_time();
-#endif
 	  while (ocall_senddata(SEND_DATA_BLOCK_SIZE) == 0) {}
       timer_end = get_time();
       printf("[TIME] dump out & send data finished: %ld us\n", (timer_end - timer_start));
+#else
+      timer_start = get_time();
+	  while (dump_out((char *)0x600000000000, SEND_DATA_BLOCK_SIZE) == 0) {}
+      timer_end = get_time();
+      printf("[TIME] dump out finished: %ld us\n", (timer_end - timer_start));
+      timer_start = get_time();
+	  while (ocall_senddata(SEND_DATA_BLOCK_SIZE) == 0) {}
+      timer_end = get_time();
+      printf("[TIME] send data finished: %ld us\n", (timer_end - timer_start));
+#endif
 
 //      timer_start = get_time();
 //      dump_out((char *)(0x600000000000));
